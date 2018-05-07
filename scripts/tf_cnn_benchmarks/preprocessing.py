@@ -552,7 +552,7 @@ class RecordInputImagePreprocessor(BaseImagePreprocess):
     return True
 
 
-class ImagenetPreprocessor(RecordInputImagePreprocessor):
+class RetinaPreprocessor(RecordInputImagePreprocessor):
 
   def preprocess(self, image_buffer, bbox, batch_position):
     # pylint: disable=g-import-not-at-top
@@ -570,6 +570,10 @@ class ImagenetPreprocessor(RecordInputImagePreprocessor):
           image_buffer, bbox, self.height, self.width, self.depth,
           is_training=False)
     return tf.cast(image, self.dtype)
+
+
+class ImagenetPreprocessor(RecordInputImagePreprocessor):
+    pass
 
 
 class Cifar10ImagePreprocessor(BaseImagePreprocess):

@@ -30,6 +30,9 @@ import preprocessing
 IMAGENET_NUM_TRAIN_IMAGES = 1281167
 IMAGENET_NUM_VAL_IMAGES = 50000
 
+RETINA_NUM_TRAIN_IMAGES = 45717
+RETINA_NUM_VAL_IMAGES = 11429
+
 
 class Dataset(object):
   """Abstract class for cnn benchmarks dataset."""
@@ -77,6 +80,20 @@ class Dataset(object):
   def use_synthetic_gpu_images(self):
     return not self.data_dir
 
+
+class RetinaData(Dataset):
+  """Configuration for Retina dataset."""
+
+  def __init__(self, data_dir=None):
+    super(RetinaData, self).__init__('retina', 299, 299, data_dir=data_dir)
+
+  def num_examples_per_epoch(self, subset='train'):
+    if subset == 'train':
+      return RETINA_NUM_TRAIN_IMAGES
+    elif subset == 'validation':
+      return RETINA_NUM_VAL_IMAGES
+    else:
+      raise ValueError('Invalid data subset "%s"' % subset)
 
 class ImagenetData(Dataset):
   """Configuration for Imagenet dataset."""
@@ -140,6 +157,7 @@ class Cifar10Data(Dataset):
 _SUPPORTED_DATASETS = {
     'imagenet': ImagenetData,
     'cifar10': Cifar10Data,
+    'retina': RetinaData,
 }
 
 _SUPPORTED_INPUT_PREPROCESSORS = {
@@ -149,7 +167,10 @@ _SUPPORTED_INPUT_PREPROCESSORS = {
     },
     'cifar10': {
         'default': preprocessing.Cifar10ImagePreprocessor
-    }
+    },
+    'retina': {
+        'default': preprocessing.RetinaPreprocessor
+    },
 }
 
 
