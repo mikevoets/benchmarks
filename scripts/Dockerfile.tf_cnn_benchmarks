@@ -1,54 +1,100 @@
-FROM nvidia/cuda:9.0-base-ubuntu16.04
+ARG   BASE_IMAGE="nvidia/cuda:9.0-base-ubuntu16.04"
+FROM $BASE_IMAGE
 
-LABEL maintainer="Craig Citro <craigcitro@google.com>"
+LABEL maintainer="Mike Voets <mwhg.voets@gmail.com>"
 
-# Pick up some TF dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential \
-        cuda-command-line-tools-9-0 \
-        cuda-cublas-9-0 \
-        cuda-cufft-9-0 \
-        cuda-curand-9-0 \
-        cuda-cusolver-9-0 \
-        cuda-cusparse-9-0 \
-        curl \
-        libcudnn7=7.0.5.15-1+cuda9.0 \
-        libfreetype6-dev \
-        libhdf5-serial-dev \
-        libpng12-dev \
-        libzmq3-dev \
-        pkg-config \
-        python \
-        python-dev \
-        rsync \
-        software-properties-common \
-        unzip \
-        && \
-    apt-get clean && \
+COPY build /tmp/build
+WORKDIR /tmp
+
+SHELL ["bash", "-c"]
+
+RUN apt-get update && apt-get install -y \
+      ca-certificates \
+      curl \
+      software-properties-common \
+      && \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
-    python get-pip.py && \
-    rm get-pip.py
+RUN apt-get update && apt-get install -y python3 && \
+    rm -rf /var/lib/apt/lists/* && \
+    curl https://bootstrap.pypa.io/get-pip.py | python3
 
-RUN pip --no-cache-dir install \
-        Pillow \
-        h5py \
-        ipykernel \
-        numpy \
-        && \
-    python -m ipykernel.kernelspec
+# Build dependencies for protobuf.
+RUN apt-get update && apt-get install -y \
+      autoconf \
+      automake \
+      build-essential \
+      libtool \
+      python3-dev \
+      unzip \
+      && \
+    rm -rf /var/lib/apt/lists/*
 
-# --- DO NOT EDIT OR DELETE BETWEEN THE LINES --- #
-# These lines will be edited automatically by parameterized_docker_build.sh. #
-# COPY _PIP_FILE_ /
-# RUN pip --no-cache-dir install /_PIP_FILE_
-# RUN rm -f /_PIP_FILE_
+RUN curl -L https://github.com/google/protobuf/archive/v3.4.0.tar.gz | tar -xz && \
+    cd protobuf* && \
+    ./autogen.sh && \
+    ./configure && \
+    make install -j$(nproc) && \
+    cd python && \
+    python3 setup.py install --cpp_implementation
 
-# Install TensorFlow GPU version.
-RUN pip --no-cache-dir install \
-    http://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-0.0.0-cp27-none-linux_x86_64.whl
-# --- ~ DO NOT EDIT OR DELETE BETWEEN THE LINES --- #
+# Build dependencies for TensorFlow.
+RUN echo "deb http://storage.googleapis.com/bazel-apt stable jdk1.8" | \
+    tee /etc/apt/sources.list.d/bazel.list && \
+    curl https://bazel.build/bazel-release.pub.gpg | apt-key add - && \
+    apt-get update && apt-get install -y \
+      openjdk-8-jdk \
+      python \
+      && \
+    curl -O -L https://github.com/bazelbuild/bazel/releases/download/0.13.0/bazel-0.13.0-without-jdk-installer-linux-x86_64.sh && \
+    chmod +x bazel-0.13.0-without-jdk-installer-linux-x86_64.sh && \
+    ./bazel-0.13.0-without-jdk-installer-linux-x86_64.sh && \
+    rm bazel-0.13.0-without-jdk-installer-linux-x86_64.sh && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN curl -L https://github.com/tensorflow/tensorflow/archive/v1.8.0.tar.gz | tar -xz && \
+    cd tensorflow* && \
+    source /tmp/build/tensorflow-env && \
+    # Nifty hack!
+    sed -ri "/^\W+sha256 = \"[^\"]+\"\W+$/d" tensorflow/workspace.bzl && \
+    pip3 install --no-cache-dir numpy && \
+    ./configure && \
+    bazel build \
+      --config=opt \
+      # Build with CUDA support when using a CUDA base image.
+      ${CUDA_VERSION:+--config=cuda} \
+      tensorflow/tools/pip_package/build_pip_package && \
+    bazel-bin/tensorflow/tools/pip_package/build_pip_package $PWD && \
+    pip3 install "$(ls -1 tensorflow*.whl | head -n 1)"
+
+RUN ln -s /usr/local/cuda-9.0/targets/x86_64-linux/lib/stubs/libcuda.so /usr/local/cuda-9.0/lib64/libcuda.so.1
+
+RUN apt-get update && apt-get install -y \
+      libglib2.0-0 \
+      libgtk2.0-dev \
+      python3-tk \
+      libsm6 \
+      && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir \
+      numpy \
+      matplotlib \
+      h5py \
+      Pillow
+
+RUN apt-get purge --autoremove -y \
+      autoconf \
+      automake \
+      curl \
+      libtool \
+      openjdk-8-jdk \
+      python \
+      python3-dev \
+      software-properties-common \
+      unzip \
+      && \
+    rm -rf /etc/apt/sources.list.d/*
 
 COPY tf_cnn_benchmarks/ ./
 RUN touch __init__.py
