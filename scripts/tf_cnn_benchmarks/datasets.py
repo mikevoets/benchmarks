@@ -85,7 +85,8 @@ class RetinaData(Dataset):
   """Configuration for Retina dataset."""
 
   def __init__(self, data_dir=None):
-    super(RetinaData, self).__init__('retina', 299, 299, data_dir=data_dir)
+    super(RetinaData, self).__init__(
+            'retina', 299, 299, data_dir=data_dir, num_classes=2)
 
   def num_examples_per_epoch(self, subset='train'):
     if subset == 'train':

@@ -553,23 +553,24 @@ class RecordInputImagePreprocessor(BaseImagePreprocess):
 
 
 class RetinaPreprocessor(RecordInputImagePreprocessor):
+  def parse_and_preprocess(self, value, batch_position):
+    features = {"image/encoded": tf.FixedLenFeature((), tf.string),
+                "image/format": tf.FixedLenFeature((), tf.string),
+                "image/class/label": tf.FixedLenFeature((), tf.int64),
+                "image/height": tf.FixedLenFeature((), tf.int64),
+                "image/width": tf.FixedLenFeature((), tf.int64)}
+    parsed = tf.parse_single_example(value, features)
 
-  def preprocess(self, image_buffer, bbox, batch_position):
-    # pylint: disable=g-import-not-at-top
-    try:
-      from official.resnet.imagenet_preprocessing import preprocess_image
-    except ImportError:
-      tf.logging.fatal('Please include tensorflow/models to the PYTHONPATH.')
-      raise
-    if self.train:
-      image = preprocess_image(
-          image_buffer, bbox, self.height, self.width, self.depth,
-          is_training=True)
-    else:
-      image = preprocess_image(
-          image_buffer, bbox, self.height, self.width, self.depth,
-          is_training=False)
-    return tf.cast(image, self.dtype)
+    image = tf.image.convert_image_dtype(
+                tf.image.decode_jpeg(parsed["image/encoded"]), tf.float32)
+
+    image = tf.reshape(image, [self.height, self.width, self.depth])
+
+    label = tf.cast(
+                tf.reshape(parsed["image/class/label"], [-1]),
+                tf.int32)
+
+    return (label, image)
 
 
 class ImagenetPreprocessor(RecordInputImagePreprocessor):
