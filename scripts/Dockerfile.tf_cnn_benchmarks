@@ -1,4 +1,4 @@
-ARG   BASE_IMAGE="nvidia/cuda:9.0-base-ubuntu16.04"
+ARG   BASE_IMAGE="nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04"
 FROM $BASE_IMAGE
 
 LABEL maintainer="Mike Voets <mwhg.voets@gmail.com>"
@@ -46,23 +46,23 @@ RUN echo "deb http://storage.googleapis.com/bazel-apt stable jdk1.8" | \
       openjdk-8-jdk \
       python \
       && \
-    curl -O -L https://github.com/bazelbuild/bazel/releases/download/0.13.0/bazel-0.13.0-without-jdk-installer-linux-x86_64.sh && \
-    chmod +x bazel-0.13.0-without-jdk-installer-linux-x86_64.sh && \
-    ./bazel-0.13.0-without-jdk-installer-linux-x86_64.sh && \
-    rm bazel-0.13.0-without-jdk-installer-linux-x86_64.sh && \
+    curl -O -L https://github.com/bazelbuild/bazel/releases/download/0.10.0/bazel-0.9.0-without-jdk-installer-linux-x86_64.sh && \
+    chmod +x bazel-0.10.0-without-jdk-installer-linux-x86_64.sh && \
+    ./bazel-0.10.0-without-jdk-installer-linux-x86_64.sh && \
+    rm bazel-0.10.0-without-jdk-installer-linux-x86_64.sh && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl -L https://github.com/tensorflow/tensorflow/archive/v1.8.0.tar.gz | tar -xz && \
     cd tensorflow* && \
     source /tmp/build/tensorflow-env && \
     # Nifty hack!
-    sed -ri "/^\W+sha256 = \"[^\"]+\"\W+$/d" tensorflow/workspace.bzl && \
+    # sed -ri "/^\W+sha256 = \"[^\"]+\"\W+$/d" tensorflow/workspace.bzl && \
     pip3 install --no-cache-dir numpy && \
     ./configure && \
     bazel build \
       --config=opt \
       # Build with CUDA support when using a CUDA base image.
-      ${CUDA_VERSION:+--config=cuda} \
+      # ${CUDA_VERSION:+--config=cuda} \
       tensorflow/tools/pip_package/build_pip_package && \
     bazel-bin/tensorflow/tools/pip_package/build_pip_package $PWD && \
     pip3 install "$(ls -1 tensorflow*.whl | head -n 1)"
