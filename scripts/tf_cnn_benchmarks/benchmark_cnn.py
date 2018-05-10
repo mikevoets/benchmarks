@@ -1096,7 +1096,7 @@ class BenchmarkCNN(object):
           params, create_config_proto(params))
       assert isinstance(self.cluster_manager, cnn_util.BaseClusterManager)
 
-      worker_prefix = '/job:worker/replica:0/task:%s' % self.task_index
+      worker_prefix = '/job:worker/task:%s' % self.task_index
       if use_ps_server:
         self.param_server_device = tf.train.replica_device_setter(
             worker_device=worker_prefix + '/cpu:0',
@@ -1108,7 +1108,7 @@ class BenchmarkCNN(object):
             for i in range(self.cluster_manager.num_ps())
         ]
       else:
-        self.sync_queue_devices = ['/job:worker/replica:0/task:0/cpu:0']
+        self.sync_queue_devices = ['/job:worker/task:0/cpu:0']
     else:
       self.task_index = 0
       self.cluster_manager = None
