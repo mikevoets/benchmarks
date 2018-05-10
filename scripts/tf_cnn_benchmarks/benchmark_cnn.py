@@ -1096,7 +1096,7 @@ class BenchmarkCNN(object):
           params, create_config_proto(params))
       assert isinstance(self.cluster_manager, cnn_util.BaseClusterManager)
 
-      worker_prefix = '/job:worker/replica:%s/task:%s' % [self.task_index, self.task_index]
+      worker_prefix = '/job:worker/replica:%s/task:%s' % (self.task_index, self.task_index)
       if use_ps_server:
         self.param_server_device = tf.train.replica_device_setter(
             worker_device=worker_prefix + '/cpu:0',
@@ -1104,7 +1104,7 @@ class BenchmarkCNN(object):
         # This device on which the queues for managing synchronization between
         # servers should be stored.
         self.sync_queue_devices = [
-            '/job:ps/replica:%s/task:%s/cpu:0' % [i, i]
+            '/job:ps/replica:%s/task:%s/cpu:0' % (i, i)
             for i in range(self.cluster_manager.num_ps())
         ]
       else:
@@ -1213,7 +1213,7 @@ class BenchmarkCNN(object):
   def reset_devices_for_task(self, task_num, is_local=False):
     """Used to imitate another task when building a distributed graph."""
     worker_prefix = ('job:localhost'
-                     if is_local else '/job:worker/replica:%s/task:%s' % [task_num, task_num])
+                     if is_local else '/job:worker/replica:%s/task:%s' % (task_num, task_num))
     self.cpu_device = '%s/cpu:0' % worker_prefix
     self.raw_devices = [
         '%s/%s:%i' % (worker_prefix, self.params.device, i)
